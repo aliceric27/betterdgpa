@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>全台停班停課資訊</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- 自定義 CSS -->
+    <style>
+        .card {
+            margin-bottom: 1rem;
+            transition: transform 0.2s;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .update-time {
+            font-size: 0.8rem;
+            color: #666;
+        }
+        .table td {
+            white-space: nowrap;  /* 縣市強制橫式 */
+        }
+        .table td:last-child {
+            white-space: normal;  /* 內容可以換行 */
+        }
+        .alert-text {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        :root {
+            --dark-bg: #1a1a1a;
+            --dark-text: #ffffff;
+            --dark-table-border: #4c4c4c;
+            --dark-hover: rgba(64, 158, 255, 0.2);
+        }
+
+        body {
+            font-family: 'Noto Sans TC', system-ui, -apple-system, sans-serif;
+        }
+
+        /* 暗色模式 */
+        @media (prefers-color-scheme: dark) {
+            body {
+                background-color: var(--dark-bg);
+                color: var(--dark-text);
+            }
+
+            .table {
+                color: var(--dark-text);
+                background-color: var(--dark-bg);
+            }
+
+            .table td, .table th {
+                border-color: var(--dark-table-border);
+            }
+
+            .text-muted {
+                color: #a0a0a0 !important;
+            }
+
+            .update-time {
+                color: #a0a0a0;
+            }
+
+            /* 修改停班停課警告背景色 */
+            .table tbody tr td[style*="background-color"] {
+                background-color: #2c2c1f !important;
+                color: #ffd700;
+            }
+        }
+
+        /* 主題相關變量 */
+        :root {
+            --light-bg: #ffffff;
+            --light-text: #000000;
+            --dark-bg: #1a1a1a;
+            --dark-text: #ffffff;
+            --dark-table-border: #4c4c4c;
+            --dark-hover: rgba(64, 158, 255, 0.2);
+        }
+
+        /* 亮色主題類 */
+        .light-theme {
+            background-color: var(--light-bg);
+            color: var(--light-text);
+        }
+
+        /* 暗色主題類 */
+        .dark-theme {
+            background-color: var(--dark-bg);
+            color: var(--dark-text);
+        }
+
+        /* 主題切換按鈕樣式 */
+        .theme-switch-wrapper {
+            display: flex;
+            justify-content: flex-end;
+            padding: 0 1rem;
+        }
+
+        .theme-switch-btn {
+            background: none;
+            border: 2px solid #666;
+            border-radius: 20px;
+            padding: 5px 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .theme-switch-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .dark-theme .theme-switch-btn {
+            border-color: #888;
+            color: var(--dark-text);
+        }
+
+        .light-icon, .dark-icon {
+            font-size: 1.2rem;
+        }
+
+        .dark-theme .light-icon,
+        .light-theme .dark-icon {
+            display: none;
+        }
+
+        /* RWD 調整 */
+        @media (max-width: 768px) {
+            .theme-switch-wrapper {
+                justify-content: center;
+                margin-bottom: 1rem;
+            }
+            
+            .container {
+                padding: 0 10px;
+            }
+            
+            .table {
+                font-size: 0.9rem;
+            }
+        }
+
+        /* 修改表格相關樣式 */
+        .table {
+            color: inherit;  /* 繼承父元素的文字顏色 */
+        }
+
+
+        /* 暗色模式下的警告樣式 */
+        .dark-theme .table tbody tr td[style*="background-color"] {
+            background-color: #2c2c1f !important;
+            color: #ffd700 !important;
+        }
+
+        /* 亮色模式下的警告樣式 */
+        .light-theme .table tbody tr td[style*="background-color"] {
+            background-color: #fff3cd !important;
+            color: inherit !important;
+        }
+
+        /* 表格邊框顏色 */
+        .dark-theme .table td,
+        .dark-theme .table th {
+            border-color: var(--dark-table-border);
+        }
+
+        .light-theme .table td,
+        .light-theme .table th {
+            border-color: #dee2e6;
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container py-4">
+        <div class="theme-switch-wrapper mb-3">
+            <button class="theme-switch-btn" id="themeToggle">
+                <span class="light-icon">☀️</span>
+                <span class="dark-icon">🌙</span>
+            </button>
+        </div>
+        <h1 class="text-center mb-4">全台停班停課即時資訊</h1>
+        <div id="lastUpdate" class="text-center mb-4"></div>
+        
+        <!-- 替换原来的 alerts div -->
+        <div class="row">
+            <div class="col-md-4">
+                <h3 class="text-center">北部地區🐲</h3>
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th class="text-center">縣市</th>
+                            <th class="text-center">是否停班停課</th>
+                        </tr>
+                    </thead>
+                    <tbody id="northTable"></tbody>
+                </table>
+            </div>
+            <div class="col-md-4">
+                <h3 class="text-center">中部地區🪨</h3>
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th class="text-center">縣市</th>
+                            <th class="text-center">是否停班停課</th>
+                        </tr>
+                    </thead>
+                    <tbody id="centralTable"></tbody>
+                </table>
+            </div>
+            <div class="col-md-4">
+                <h3 class="text-center">南部地區🐖</h3>
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th class="text-center">縣市</th>
+                            <th class="text-center">是否停班停課</th>
+                        </tr>
+                    </thead>
+                    <tbody id="southTable"></tbody>
+                </table>
+            </div>
+            <div class="col-md-4">
+                <h3 class="text-center">東部地區🌼</h3>
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th class="text-center">縣市</th>
+                            <th class="text-center">是否停班停課</th>
+                        </tr>
+                    </thead>
+                    <tbody id="eastTable"></tbody>
+                </table>
+            </div>
+            <div class="col-md-4">
+                <h3 class="text-center">外島地區🏝️</h3>
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th class="text-center">縣市</th>
+                            <th class="text-center">是否停班停課</th>
+                        </tr>
+                    </thead>
+                    <tbody id="islandTable"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Axios -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    
+    <script>
+        // 定義各地區的城市
+        const regions = {
+            north: ['臺北市', '新北市', '基隆市', '桃園市', '新竹市', '新竹縣'],
+            central: ['臺中市', '苗栗縣', '彰化縣', '南投縣', '雲林縣'],
+            south: ['高雄市', '臺南市', '嘉義市', '嘉義縣', '屏東縣'],
+            east: ['宜蘭縣', '花蓮縣', '臺東縣'],
+            island: ['澎湖縣', '金門縣', '連江縣']
+        };
+
+        function initializeTables() {
+            // 為每個地區初始化表格
+            Object.entries(regions).forEach(([regionId, cities]) => {
+                const tableBody = document.getElementById(`${regionId}Table`);
+                if (tableBody) {
+                    tableBody.innerHTML = cities.map(city => `
+                        <tr>
+                            <td class="text-center">${city}</td>
+                            <td class="text-center">正常上班上課</td>
+                        </tr>
+                    `).join('');
+                }
+            });
+        }
+
+        async function fetchAlerts() {
+            try {
+                const response = await axios.get('https://www.dgpa.gov.tw/');
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(response.data, "text/html");
+                const lastUpdate = document.getElementById('lastUpdate');
+                
+                // 更新時間顯示
+                const updateTimeText = doc.querySelector("h4")?.textContent || "";
+                const updateTime = updateTimeText.match(/更新時間：(.+)/)?.[1] || "";
+                lastUpdate.innerHTML = `<p class="text-muted">最後更新時間：${updateTime}</p>`;
+                
+                // 初始化表格
+                initializeTables();
+                
+                // 使用 ID 選擇器獲取停班停課資訊表格
+                const alertTable = doc.getElementById('Table');
+                if (alertTable) {
+                    const rows = alertTable.querySelectorAll('.Table_Body tr');
+                    let currentRegion = '';
+                    
+                    rows.forEach(row => {
+                        // 跳過備註行
+                        if (row.querySelector('td[colspan="3"]')) return;
+                        
+                        const cells = row.querySelectorAll('td');
+                        if (cells.length >= 1) {
+                            // 檢查是否為地區行（包含 rowspan 屬性）
+                            const regionCell = cells[0];
+                            if (regionCell.hasAttribute('rowspan')) {
+                                currentRegion = regionCell.textContent.trim();
+                            }
+                            
+                            // 獲取城市和狀態
+                            const cityCell = cells.length === 3 ? cells[1] : cells[0];
+                            const statusCell = cells.length === 3 ? cells[2] : cells[1];
+                            
+                            if (cityCell && statusCell) {
+                                const city = cityCell.textContent.trim();
+                                const status = statusCell.textContent.trim();
+                                
+                                if (city && status && currentRegion) {
+                                    updateTableContent(currentRegion, city, status);
+                                }
+                            }
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                showError();
+            }
+        }
+
+        function updateTableContent(region, city, status) {
+            const regionMap = {
+                '北部地區': 'north',
+                '中部地區': 'central',
+                '南部地區': 'south',
+                '東部地區': 'east',
+                '外島地區': 'island'
+            };
+            
+            const tableId = regionMap[region];
+            if (!tableId) return;
+            
+            const tableBody = document.getElementById(`${tableId}Table`);
+            if (!tableBody) return;
+            
+            const rows = tableBody.getElementsByTagName('tr');
+            for (let row of rows) {
+                if (row.cells[0].textContent === city) {
+                    row.cells[1].innerHTML = status;
+                    if (status.includes('停止上班') || status.includes('停止上課')) {
+                        row.cells[1].style.backgroundColor = '#fff3cd';
+                        row.cells[1].style.color = '#856404';
+                    }
+                }
+            }
+        }
+
+        function showError() {
+            ['north', 'central', 'south', 'east', 'island'].forEach(region => {
+                document.getElementById(`${region}Table`).innerHTML = `
+                    <tr>
+                        <td colspan="2" class="text-center text-danger">
+                            載入資料時發生錯誤，請稍後再試
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleString('zh-TW', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        // 初次載入和定時更新
+        fetchAlerts();
+        setInterval(fetchAlerts, 300000); // 每5分鐘更新一次
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const themeToggle = document.getElementById('themeToggle');
+            
+            // 檢查本地存儲的主題設置
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme) {
+                document.body.className = savedTheme;
+            } else {
+                // 如果沒有保存的主題，則使用系統預設
+                if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                    document.body.className = 'dark-theme';
+                } else {
+                    document.body.className = 'light-theme';
+                }
+            }
+            
+            // 切換主題
+            themeToggle.addEventListener('click', () => {
+                if (document.body.className === 'light-theme') {
+                    document.body.className = 'dark-theme';
+                    localStorage.setItem('theme', 'dark-theme');
+                } else {
+                    document.body.className = 'light-theme';
+                    localStorage.setItem('theme', 'light-theme');
+                }
+            });
+            
+            // 監聽系統主題變化
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+                if (!localStorage.getItem('theme')) {
+                    document.body.className = e.matches ? 'dark-theme' : 'light-theme';
+                }
+            });
+        });
+    </script>
+</body>
+</html> 
