@@ -283,52 +283,86 @@
 
         async function fetchAlerts() {
             try {
-                // 改用 NCDR API
-                const response = await axios.get('https://alerts.ncdr.nat.gov.tw/RssAtomFeed.ashx?AlertType=33');
+                // 使用 CORS Proxy 來避免跨域問題
+                const response = await axios.get('https://alerts.ncdr.nat.gov.tw/RssAtomFeed.ashx?AlertType=33', {
+                    headers: {
+                        'Accept': 'application/xml, text/xml, */*'
+                    }
+                });
+
                 const parser = new DOMParser();
-                const doc = parser.parseFromString(response.data, "text/xml");
+                const feed = parser.parseFromString(response.data, "text/xml");
                 
-                // 更新時間顯示
-                const updateTime = doc.querySelector("updated")?.textContent || "";
-                const formattedTime = updateTime ? new Date(updateTime).toLocaleString('zh-TW') : "";
+                // 更新時間顯示 (使用 feed 的更新時間)
+                const updateTime = feed.querySelector("feed > updated")?.textContent || "";
+                const formattedTime = updateTime ? new Date(updateTime).toLocaleString('zh-TW', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                }) : "";
+                
                 document.getElementById('lastUpdate').innerHTML = 
-                    `<p class="text-muted">最後更新時間：${formattedTime}</p>`;
+                    `<p class="text-muted">資料來源：NCDR 警示公告<br>最後更新時間：${formattedTime}</p>`;
                 
                 // 初始化表格
                 initializeTables();
                 
-                // 解析所有 entry
-                const entries = doc.querySelectorAll("entry");
+                // 取得所有停班停課通知
+                const entries = Array.from(feed.querySelectorAll("entry")).reverse(); // 反轉順序，最新的在前
+                
+                // 建立已處理的縣市集合，避免重複處理
+                const processedCities = new Set();
+                
                 entries.forEach(entry => {
                     const summary = entry.querySelector("summary")?.textContent || "";
-                    // 解析停班停課訊息
-                    if (summary.includes("[停班停課通知]")) {
-                        const match = summary.match(/^[^:]+:([^:]+):(.*)/);
-                        if (match) {
-                            const city = match[1].trim();
-                            const status = match[2].split('。')[0].trim();
-                            
-                            // 更新對應的表格
-                            Object.entries(regions).forEach(([region, cities]) => {
-                                cities.forEach(targetCity => {
-                                    // 處理縣市名稱比對 (包含區域的情況)
-                                    if (city.startsWith(targetCity)) {
-                                        const tableBody = document.getElementById(`${region}Table`);
-                                        if (tableBody) {
-                                            const rows = tableBody.getElementsByTagName('tr');
-                                            for (let row of rows) {
-                                                if (row.cells[0].textContent === targetCity) {
-                                                    row.cells[1].innerHTML = status;
-                                                    if (status.includes('停止上班') || status.includes('停止上課')) {
-                                                        row.cells[1].style.backgroundColor = '#fff3cd';
-                                                        row.cells[1].style.color = '#856404';
+                    const updateTimeStr = entry.querySelector("updated")?.textContent || "";
+                    const entryTime = new Date(updateTimeStr);
+                    
+                    // 只處理最近 24 小時內的通知
+                    if (Date.now() - entryTime.getTime() <= 24 * 60 * 60 * 1000) {
+                        if (summary.includes("[停班停課通知]")) {
+                            const match = summary.match(/^[^:]+:([^:]+):(.*)/);
+                            if (match) {
+                                const city = match[1].trim();
+                                const status = match[2].split('。')[0].trim();
+                                
+                                // 檢查是否已處理過此縣市
+                                if (!processedCities.has(city)) {
+                                    processedCities.add(city);
+                                    
+                                    // 更新對應的表格
+                                    Object.entries(regions).forEach(([region, cities]) => {
+                                        cities.forEach(targetCity => {
+                                            // 處理縣市名稱比對 (包含區域的情況)
+                                            if (city.startsWith(targetCity) || city === targetCity) {
+                                                const tableBody = document.getElementById(`${region}Table`);
+                                                if (tableBody) {
+                                                    const rows = tableBody.getElementsByTagName('tr');
+                                                    for (let row of rows) {
+                                                        if (row.cells[0].textContent === targetCity) {
+                                                            // 如果是特定區域的通知，加上區域說明
+                                                            const displayStatus = city !== targetCity 
+                                                                ? `${city}: ${status}` 
+                                                                : status;
+                                                            
+                                                            row.cells[1].innerHTML = displayStatus;
+                                                            
+                                                            // 根據狀態設置樣式
+                                                            if (status.includes('停止上班') || status.includes('停止上課')) {
+                                                                row.cells[1].style.backgroundColor = '#fff3cd';
+                                                                row.cells[1].style.color = '#856404';
+                                                            }
+                                                        }
                                                     }
                                                 }
                                             }
-                                        }
-                                    }
-                                });
-                            });
+                                        });
+                                    });
+                                }
+                            }
                         }
                     }
                 });
