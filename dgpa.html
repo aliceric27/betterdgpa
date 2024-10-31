@@ -375,9 +375,28 @@
             });
         }
 
-        // 載入資料
-        fetch(CORS_PROXY + encodeURIComponent(RSS_URL))
-            .then(response => response.text())
+        // 添加延遲函數
+        function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        // 添加重試機制的fetch函數
+        async function fetchWithRetry(url, retries = 5) {
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const response = await fetch(url);
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    return await response.text();
+                } catch (error) {
+                    console.log(`嘗試第 ${i + 1} 次失敗:`, error);
+                    if (i === retries - 1) throw error;
+                    await delay(1000); // 等待1秒後重試
+                }
+            }
+        }
+
+        // 更新載入資料的部分
+        fetchWithRetry(CORS_PROXY + encodeURIComponent(RSS_URL))
             .then(str => new window.DOMParser().parseFromString(str, "text/xml"))
             .then(data => {
                 const alerts = processData(data);
