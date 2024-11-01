@@ -597,6 +597,7 @@
                 const tableBody = document.getElementById(`${region}Table`);
                 if (tableBody) {
                     tableBody.innerHTML = regions[region].map(city => {
+                        const displayCity = city
                         const alert = alerts[city];
                         const status = alert ? alert.status : '正常上班上課';
                         
