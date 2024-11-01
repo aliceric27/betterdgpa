@@ -124,23 +124,38 @@
         :root {
             --dark-bg: #1a1a1a;
             --dark-text: #ffffff;
+            --dark-table-bg: #2d2d2d;
             --dark-table-border: #4c4c4c;
-            --dark-hover: rgba(64, 158, 255, 0.2);
+            --dark-table-header: #383838;
+            --status-red: #ea4242;
+            --status-purple: #800080;
+            --status-blue: #0d6cd9;
         }
 
         /* 暗色主題類 */
         .dark-theme {
             background-color: var(--dark-bg);
-            color: var(--dark-text);
+            color: var(--dark-text) !important;
         }
 
         .dark-theme .table {
-            color: var(--dark-text);
-            background-color: var(--dark-bg);
+            color: var(--dark-text) !important;
+            background-color: var(--dark-table-bg);
         }
 
-        .dark-theme .table td, 
-        .dark-theme .table th {
+        .dark-theme .table thead th {
+            background-color: var(--dark-table-header);
+            border-color: var(--dark-table-border);
+            color: var(--dark-text);
+        }
+
+        .dark-theme .table td {
+            color: var(--dark-text) !important;
+            border-color: var(--dark-table-border);
+            background-color: var(--dark-table-bg);
+        }
+
+        .dark-theme .table-bordered {
             border-color: var(--dark-table-border);
         }
 
@@ -221,9 +236,11 @@
             font-weight: 400;  /* 表格內容正常粗細 */
         }
 
-        /* 在 style 區塊添加新的樣式 */
-        .status-normal {
-            background-color: #e8f5e9 !important; /* 淡綠色背景 */
+        /* 在 style 區塊中更新/新增以下樣式 */
+        .status-normal,
+        .status-alert,
+        .region-name {
+            display: none;
         }
 
         .status-alert {
@@ -300,13 +317,86 @@
             margin-bottom: 0;  /* 移除表格底部邊距 */
         }
 
-        /* 暗��配 */
+        /* 暗 */
         .dark-theme .table-responsive {
+            background-color: var(--dark-table-bg);
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
         }
 
         .dark-theme .table-responsive:hover {
             box-shadow: 0 8px 12px rgba(0, 0, 0, 0.4);
+        }
+
+        /* 更新暗色模式相關樣式 */
+        .dark-theme span[style*="color: #ea4242"] {
+            color: #ff6b6b !important;  /* 較亮的紅色 */
+        }
+
+        .dark-theme span[style*="color: purple"] {
+            color: #e085e0 !important;  /* 較亮的紫色 */
+        }
+
+        .dark-theme span[style*="color: #0d6cd9"] {
+            color: #7cb9ff !important;  /* 較亮的藍色 */
+        }
+
+        /* 表格內容顏色統一使用變數 */
+        .table td span[style*="color: #ea4242"] {
+            color: var(--status-red) !important;
+        }
+
+        .table td span[style*="color: purple"] {
+            color: var(--status-purple) !important;
+        }
+
+        .table td span[style*="color: #0d6cd9"] {
+            color: var(--status-blue) !important;
+        }
+
+        /* 暗色主題基本樣式 */
+        .dark-theme {
+            background-color: var(--dark-bg);
+            color: var(--dark-text) !important;
+        }
+
+        /* 暗色主題表格樣式 */
+        .dark-theme .table {
+            color: var(--dark-text) !important;
+        }
+
+        .dark-theme .table td {
+            color: var(--dark-text) !important;
+            border-color: var(--dark-table-border);
+            background-color: var(--dark-table-bg);
+        }
+
+        .dark-theme .table span {
+            color: var(--dark-text) !important;
+        }
+
+        /* 保持特殊狀態的顏色 */
+        .dark-theme .table span[style*="color: #ea4242"],
+        .dark-theme .table span[style*="color: purple"],
+        .dark-theme .table span[style*="color: #0d6cd9"] {
+            color: inherit !important;
+        }
+
+        /* 一般文字顏色 */
+        .dark-theme .table span:not([style]) {
+            color: var(--dark-text) !important;
+        }
+
+        /* 特殊狀態的顏色 */
+        .dark-theme .table span[style*="color: #ea4242"] {
+            color: #ff6b6b !important;
+        }
+
+        .dark-theme .table span[style*="color: purple"] {
+            color: #e085e0 !important;
+        }
+
+        .dark-theme .table span[style*="color: #0d6cd9"] {
+            color: #7cb9ff !important;
         }
     </style>
 </head>
@@ -507,39 +597,46 @@
                 const tableBody = document.getElementById(`${region}Table`);
                 if (tableBody) {
                     tableBody.innerHTML = regions[region].map(city => {
+                        const displayCity = city === '雄市' ? '高雄市' : city;
                         const alert = alerts[city];
                         const status = alert ? alert.status : '正常上班上課';
                         
-                        const isNormal = status.trim() === '今天照常上班、照常上課。';
-                        const hasAlert = status.includes('停止上班') || status.includes('停止上課');
-                        
-                        // 修改狀態文字處理邏輯
                         const formattedStatus = status.split('\n').map(line => {
-                            if (line.includes('停止上班') || line.includes('停止上課')) {
-                                const parts = line.split('<br>');
-                                if (parts.length > 1) {
-                                    return `<span class="region-name">${parts[0]}</span><br>${parts[1].split('、').map(part => 
-                                        part.includes('停止') ? `<span class="status-alert">${part}</span>` : part
-                                    ).join('、')}`;
-                                } else {
-                                    // 如果同時包含停止上班和停止上課，整行都標示為紅色
-                                    if (line.includes('停止上班') && line.includes('停止上課')) {
-                                        return `<span class="status-alert">${line}</span>`;
-                                    }
-                                    // 否則只標示包含停止的部分
-                                    return line.split('、').map(part => 
-                                        part.includes('停止') ? `<span class="status-alert">${part}</span>` : part
-                                    ).join('、');
-                                }
+                            // 處理一般的正常上班上課狀態
+                            if (line === '今天照常上班、照常上課。') {
+                                // 移除 style 屬性，讓它直接繼承表格的顏色
+                                return `<span>${line}</span>`;
                             }
-                            return line;
+                            
+                            const parts = line.split('<br>');
+                            if (parts.length > 1) {
+                                const schoolName = parts[0];
+                                const statusText = parts[1];
+                                
+                                let statusColor;
+                                if (statusText.includes('停止上班') && statusText.includes('停止上課')) {
+                                    statusColor = '#ea4242';
+                                } else if (
+                                    (statusText.includes('照常上班') && statusText.includes('停止上課')) ||
+                                    (statusText.includes('停止上班') && statusText.includes('照常上課'))
+                                ) {
+                                    statusColor = 'purple';
+                                } else {
+                                    // 移除 color 設定，讓它繼承表格顏色
+                                    return `<span>${statusText}</span>`;
+                                }
+                                
+                                return `<span style="color: #0d6cd9">${schoolName}</span><br>` +
+                                       `<span style="color: ${statusColor}">${statusText}</span>`;
+                            }
+                            // 其他一般文字不設定顏色
+                            return `<span>${line}</span>`;
                         }).join('\n');
 
                         return `
                             <tr>
-                                <td class="text-center">${city}</td>
-                                <td class="text-center ${isNormal ? 'status-normal' : ''} ${hasAlert ? 'table-warning' : ''}" 
-                                    style="white-space: pre-line">${formattedStatus}</td>
+                                <td class="text-center">${displayCity}</td>
+                                <td class="text-center" style="white-space: pre-line">${formattedStatus}</td>
                             </tr>
                         `;
                     }).join('');
