@@ -84,7 +84,7 @@
             }
             
             .table td:last-child {
-                min-width: 120px;  /* 更��螢幕進一步縮小寬 */
+                min-width: 120px;  /* 更幕進一步縮小寬 */
             }
 
             /* 調整容器邊距 */
@@ -237,6 +237,51 @@
         .status-alert {
             color: #fb6868;  /* 保持原有的紅色警示 */
         }
+
+        /* 更新時間區塊樣式 */
+        .update-info {
+            margin-bottom: 2rem;
+            text-align: right;
+        }
+        
+        .update-info h4 {
+            font-weight: normal;
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .update-info a {
+            color: #4a90e2;
+            text-decoration: none;
+        }
+        
+        .update-info a:hover {
+            text-decoration: underline;
+        }
+        
+        /* 暗色模式適配 */
+        .dark-theme .update-info a {
+            color: #7cb9ff;
+        }
+
+        /* 日期標題樣式 */
+        .Header_YMD {
+            text-align: center;
+            font-size: 1.2rem;
+            margin-bottom: 1.5rem;
+            font-weight: 500;
+        }
+        
+        /* 暗色模式適配 */
+        .dark-theme .Header_YMD {
+            color: var(--dark-text);
+        }
+        
+        @media (max-width: 576px) {
+            .Header_YMD {
+                font-size: 1rem;
+            }
+        }
     </style>
 </head>
 <body>
@@ -256,6 +301,16 @@
         
         <!-- 資料顯示區域 -->
         <div id="data-container" style="display: none;">
+            <div class="Header_YMD" id="dateHeader">
+                載入中...
+            </div>
+            <div class="update-info">
+                <h4>
+                    更新時間：<span id="updateTime">載入中...</span>
+                    <br>
+                    <a href="https://www.dgpa.gov.tw/informationlist?uid=374" target="_blank">歷次天然災害停止上班上課訊息</a>
+                </h4>
+            </div>
             <div class="row">
                 <!-- 北部地區 -->
                 <div class="col-12 col-md-4">
@@ -348,7 +403,7 @@
         const regions = {
             north: ['臺北市', '新北市', '基隆市', '桃園市', '新竹市', '新竹縣'],
             central: ['苗栗縣', '臺中市', '彰化縣', '南投縣', '雲林縣'],
-            south: ['嘉義市', '嘉義縣', '臺南市', '高雄市', '屏東縣'],
+            south: ['嘉義市', '嘉義縣', '臺南市', '雄市', '屏東縣'],
             east: ['宜蘭縣', '花蓮縣', '臺東縣'],
             island: ['澎湖縣', '金門縣', '連江縣']
         };
@@ -358,6 +413,22 @@
             const doc = parser.parseFromString(html, 'text/html');
             const table = doc.querySelector('#Table');
             const alerts = {};
+            
+            // 獲取標題日期
+            const headerElement = doc.querySelector('.Header_YMD');
+            if (headerElement) {
+                const headerText = headerElement.textContent.trim();
+                document.getElementById('dateHeader').textContent = headerText;
+            }
+            
+            // 獲取更新時間
+            const updateTimeElement = doc.querySelector('.Content_Updata');
+            if (updateTimeElement) {
+                const timeText = updateTimeElement.textContent.match(/更新時間：([\d\/: ]+)/);
+                if (timeText && timeText[1]) {
+                    document.getElementById('updateTime').textContent = timeText[1].trim();
+                }
+            }
             
             if (!table) return alerts;
             
@@ -383,7 +454,7 @@
             return alerts;
         }
 
-        // 更新資料獲取方式
+        // 更新資料獲取方
         async function fetchData() {
             try {
                 const response = await fetch(DGPA_URL);
