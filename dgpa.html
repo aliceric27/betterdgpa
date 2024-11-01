@@ -84,7 +84,7 @@
             }
             
             .table td:last-child {
-                min-width: 120px;  /* 更小螢幕進一步縮小寬度 */
+                min-width: 120px;  /* 更��螢幕進一步縮小寬 */
             }
 
             /* 調整容器邊距 */
@@ -220,6 +220,23 @@
         .table td {
             font-weight: 400;  /* 表格內容正常粗細 */
         }
+
+        /* 在 style 區塊添加新的樣式 */
+        .status-normal {
+            background-color: #e8f5e9 !important; /* 淡綠色背景 */
+        }
+
+        .status-alert {
+            color: #fb6868;
+        }
+
+        .region-name {
+            color: #4a90e2;  /* 淡藍色 */
+        }
+
+        .status-alert {
+            color: #fb6868;  /* 保持原有的紅色警示 */
+        }
     </style>
 </head>
 <body>
@@ -325,7 +342,7 @@
 
     <script>
         const CORS_PROXY = "https://corsproxy.io/?";
-        const RSS_URL = "https://alerts.ncdr.nat.gov.tw/RssAtomFeed.ashx?AlertType=33";
+        const DGPA_URL = "https://www.dgpa.gov.tw/typh/daily/nds.html";
         
         // 定義縣市分類
         const regions = {
@@ -336,38 +353,83 @@
             island: ['澎湖縣', '金門縣', '連江縣']
         };
 
-        function processData(data) {
-            const entries = data.getElementsByTagName("entry");
+        async function processData(html) {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const table = doc.querySelector('#Table');
             const alerts = {};
             
-            Array.from(entries).forEach(entry => {
-                const summary = entry.getElementsByTagName("summary")[0].textContent;
-                const updated = entry.getElementsByTagName("updated")[0].textContent;
-                
-                // 解析縣市和狀態
-                const match = summary.match(/\[(停班停課通知)\](.*?):/);
-                if (match) {
-                    const city = match[2].trim();
+            if (!table) return alerts;
+            
+            const rows = table.querySelectorAll('tr');
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                if (cells.length >= 2) {
+                    const city = cells[0].textContent.trim();
+                    const status = cells[1].textContent.trim()
+                        .replace(/。\s*/g, '。\n')
+                        .replace(/。$/g, '。')
+                        .replace(/:/g, '<br>');
+                    
+                    const hasAlert = status.includes('停止上班') || status.includes('停止上課');
+                    
                     alerts[city] = {
-                        status: summary,
-                        time: updated
+                        status: status,
+                        hasAlert: hasAlert
                     };
                 }
             });
-
+            
             return alerts;
         }
 
+        // 更新資料獲取方式
+        async function fetchData() {
+            try {
+                const response = await fetch(DGPA_URL);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const html = await response.text();
+                const alerts = await processData(html);
+                
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('data-container').style.display = 'block';
+                updateTables(alerts);
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                document.getElementById('loading').innerHTML = "無法載入資料，請稍後再試";
+            }
+        }
+
+        // 修改表格更新函數
         function updateTables(alerts) {
             Object.keys(regions).forEach(region => {
                 const tableBody = document.getElementById(`${region}Table`);
                 if (tableBody) {
                     tableBody.innerHTML = regions[region].map(city => {
                         const alert = alerts[city];
+                        const status = alert ? alert.status : '正常上班上課';
+                        
+                        const isNormal = status.trim() === '今天照常上班、照常上課。';
+                        const hasAlert = status.includes('停止上班') || status.includes('停止上課');
+                        
+                        // 修改狀態文字處理邏輯
+                        const formattedStatus = status.split('\n').map(line => {
+                            if (line.includes('停止上班') || line.includes('停止上課')) {
+                                const parts = line.split('<br>');
+                                if (parts.length > 1) {
+                                    return `<span class="region-name">${parts[0]}</span><br><span class="status-alert">${parts[1]}</span>`;
+                                } else {
+                                    return `<span class="status-alert">${line}</span>`;
+                                }
+                            }
+                            return line;
+                        }).join('\n');
+
                         return `
                             <tr>
                                 <td class="text-center">${city}</td>
-                                <td class="text-center ${alert ? 'table-warning' : ''}">${alert ? alert.status : '正常上班上課'}</td>
+                                <td class="text-center ${isNormal ? 'status-normal' : ''} ${hasAlert ? 'table-warning' : ''}" 
+                                    style="white-space: pre-line">${formattedStatus}</td>
                             </tr>
                         `;
                     }).join('');
@@ -375,39 +437,12 @@
             });
         }
 
-        // 添加延遲函數
-        function delay(ms) {
-            return new Promise(resolve => setTimeout(resolve, ms));
-        }
-
-        // 添加重試機制的fetch函數
-        async function fetchWithRetry(url, retries = 5) {
-            for (let i = 0; i < retries; i++) {
-                try {
-                    const response = await fetch(url);
-                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                    return await response.text();
-                } catch (error) {
-                    console.log(`嘗試第 ${i + 1} 次失敗:`, error);
-                    if (i === retries - 1) throw error;
-                    await delay(1000); // 等待1秒後重試
-                }
-            }
-        }
-
-        // 更新載入資料的部分
-        fetchWithRetry(CORS_PROXY + encodeURIComponent(RSS_URL))
-            .then(str => new window.DOMParser().parseFromString(str, "text/xml"))
-            .then(data => {
-                const alerts = processData(data);
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('data-container').style.display = 'block';
-                updateTables(alerts);
-            })
-            .catch(error => {
-                console.error('Error fetching RSS feed:', error);
-                document.getElementById('loading').innerHTML = "無法載入資料，請稍後再試";
-            });
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchData();
+            // 每5分鐘更新一次資料
+            setInterval(fetchData, 300000);
+        });
 
         // 添加主題切換功能
         document.addEventListener('DOMContentLoaded', function() {
