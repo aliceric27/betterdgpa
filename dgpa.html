@@ -530,15 +530,11 @@
                 const cells = row.querySelectorAll('td');
                 if (cells.length >= 2) {
                     const city = cells[0].textContent.trim();
-                    const status = cells[1].textContent.trim()
-                        .replace(/。\s*/g, '。\n')
-                        .replace(/。$/g, '。')
-                        .replace(/:/g, '<br>');
-                    
-                    const hasAlert = status.includes('停止上班') || status.includes('停止上課');
+                    const statusHtml = cells[1].innerHTML;
+                    const hasAlert = statusHtml.includes('停止上班') || statusHtml.includes('停止上課');
                     
                     alerts[city] = {
-                        status: status,
+                        statusHtml: statusHtml,
                         hasAlert: hasAlert
                     };
                 }
@@ -575,41 +571,16 @@
                 const tableBody = document.getElementById(`${region}Table`);
                 if (tableBody) {
                     tableBody.innerHTML = regions[region].map(city => {
-                        const displayCity = city
+                        const displayCity = city;
                         const alert = alerts[city];
-                        const status = alert ? alert.status : '正常上班上課';
+                        const statusHtml = alert ? alert.statusHtml : '正常上班上課';
                         
-                        const formattedStatus = status.split('\n').map(line => {
-                            // 處理一般的正常上班上課狀態
-                            if (line === '今天照常上班、照常上課。') {
-                                // 移除 style 屬性，讓它直接繼承表格的顏色
-                                return `<span>${line}</span>`;
-                            }
-                            
-                            const parts = line.split('<br>');
-                            if (parts.length > 1) {
-                                const schoolName = parts[0];
-                                const statusText = parts[1];
-                                
-                                let statusColor;
-                                if (statusText.includes('停止上班') && statusText.includes('停止上課')) {
-                                    statusColor = '#ea4242';
-                                } else if (
-                                    (statusText.includes('照常上班') && statusText.includes('停止上課')) ||
-                                    (statusText.includes('停止上班') && statusText.includes('照常上課'))
-                                ) {
-                                    statusColor = 'purple';
-                                } else {
-                                    // 移除 color 設定，讓它繼承表格顏色
-                                    return `<span>${statusText}</span>`;
-                                }
-                                
-                                return `<span style="color: #0d6cd9">${schoolName}</span><br>` +
-                                       `<span style="color: ${statusColor}">${statusText}</span>`;
-                            }
-                            // 其他一般文字不設定顏色
-                            return `<span>${line}</span>`;
-                        }).join('\n');
+                        const formattedStatus = statusHtml
+                            .replace(/<br>/g, '\n')  // 将 <br> 转换为换行符
+                            .replace(/<font color="#FF0000">/g, '<span style="color: #ea4242">')  // 转换红色字体
+                            .replace(/<\/font>/g, '</span>')  // 关闭标签
+                            .replace(/。\s*/g, '。\n')
+                            .replace(/。$/g, '。');
 
                         return `
                             <tr>
