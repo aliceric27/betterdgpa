@@ -703,12 +703,14 @@
         document.addEventListener('DOMContentLoaded', function() {
             const themeToggle = document.getElementById('themeToggle');
             
-            // 檢查本地存儲的題設置
-            const savedTheme = localStorage.getItem('theme');
-            if (savedTheme) {
-                document.body.className = savedTheme;
+            // 檢查是否有使用者手動設定的主題
+            const userSetTheme = localStorage.getItem('userSetTheme');
+            
+            if (userSetTheme) {
+                // 如果有手動設定，使用手動設定的主題
+                document.body.className = userSetTheme;
             } else {
-                // 如果沒有保存的主題，則使用系統預設
+                // 如果沒有手動設定，跟隨系統主題
                 if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
                     document.body.className = 'dark-theme';
                 } else {
@@ -716,20 +718,21 @@
                 }
             }
             
-            // 切換主題
+            // 切換主題按鈕事件
             themeToggle.addEventListener('click', () => {
                 if (document.body.className === 'light-theme') {
                     document.body.className = 'dark-theme';
-                    localStorage.setItem('theme', 'dark-theme');
+                    localStorage.setItem('userSetTheme', 'dark-theme');
                 } else {
                     document.body.className = 'light-theme';
-                    localStorage.setItem('theme', 'light-theme');
+                    localStorage.setItem('userSetTheme', 'light-theme');
                 }
             });
             
             // 監聽系統主題變化
             window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
-                if (!localStorage.getItem('theme')) {
+                // 只有在使用者沒有手動設定主題時，才跟隨系統主題
+                if (!localStorage.getItem('userSetTheme')) {
                     document.body.className = e.matches ? 'dark-theme' : 'light-theme';
                 }
             });
