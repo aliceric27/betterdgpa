@@ -84,7 +84,7 @@
             }
             
             .table td:last-child {
-                min-width: 120px;  /* 更幕進一步縮小寬 */
+                min-width: 120px;  /* 更進一步縮小寬 */
             }
 
             /* 調整容器邊距 */
@@ -135,24 +135,29 @@
         /* 暗色主題類 */
         .dark-theme {
             background-color: var(--dark-bg);
-            color: var(--dark-text) !important;
+            color: #ffffff !important;  /* 確保基本文字為白色 */
         }
 
         .dark-theme .table {
             color: var(--dark-text) !important;
-            background-color: var(--dark-table-bg);
         }
 
-        .dark-theme .table thead th {
-            background-color: var(--dark-table-header);
-            border-color: var(--dark-table-border);
-            color: var(--dark-text);
-        }
-
-        .dark-theme .table td {
+        .dark-theme .table td,
+        .dark-theme .table th {
             color: var(--dark-text) !important;
             border-color: var(--dark-table-border);
-            background-color: var(--dark-table-bg);
+            background-color: var(--dark-table-bg) !important;
+        }
+
+        .dark-theme h1,
+        .dark-theme h3,
+        .dark-theme h4 {
+            color: #ffffff !important;
+        }
+
+        /* 確保暗色模式下的一般文字為白色 */
+        .dark-theme .table span:not([style*="color:"]) {
+            color: #ffffff !important;
         }
 
         .dark-theme .table-bordered {
@@ -342,10 +347,11 @@
             color: var(--dark-text) !important;
         }
 
-        .dark-theme .table td {
+        .dark-theme .table td,
+        .dark-theme .table th {
             color: var(--dark-text) !important;
             border-color: var(--dark-table-border);
-            background-color: var(--dark-table-bg);
+            background-color: var(--dark-table-bg) !important;
         }
 
         .dark-theme .table span {
@@ -375,6 +381,95 @@
 
         .dark-theme .table span[style*="color: #0d6cd9"] {
             color: #7cb9ff !important;
+        }
+
+        /* 更新暗色模式相關樣式 */
+        .dark-theme {
+            background-color: var(--dark-bg);
+            color: #ffffff !important;
+        }
+
+        /* 確保暗色模式下所有表格內容為白色 */
+        .dark-theme .table td,
+        .dark-theme .table th,
+        .dark-theme .table td span,
+        .dark-theme .table td div {
+            color: #ffffff !important;
+        }
+
+        /* 特殊狀態的顏色覆蓋 */
+        .dark-theme .table span[style*="color: #ea4242"] {
+            color: #ff6b6b !important;
+        }
+
+        .dark-theme .table span[style*="color: purple"] {
+            color: #e085e0 !important;
+        }
+
+        .dark-theme .table span[style*="color: #0d6cd9"] {
+            color: #7cb9ff !important;
+        }
+
+        /* 確保純文字內容為白色 */
+        .dark-theme .table td:not(:has(span[style*="color"])) {
+            color: #ffffff !important;
+        }
+
+        /* 確保所有純文字為白色 */
+        .dark-theme .table td {
+            color: #ffffff !important;
+        }
+
+        .dark-theme .table td span:not([style*="color:"]),
+        .dark-theme .table td:not(:has(span[style*="color"])) {
+            color: #ffffff !important;
+        }
+
+        /* 暗色模式下將黑色文字改為白色 */
+        .dark-theme .table td span[style*="color: #000000"],
+        .dark-theme .table td span[style*="color: black"],
+        .dark-theme .table td span[style*="color:#000000"],
+        .dark-theme .table td span[style*="color:black"] {
+            color: #ffffff !important;
+        }
+
+        /* 確保所有純文字為白色 */
+        .dark-theme .table td {
+            color: #ffffff !important;
+        }
+
+        .dark-theme .table td span:not([style*="color:"]),
+        .dark-theme .table td:not(:has(span[style*="color"])) {
+            color: #ffffff !important;
+        }
+
+        /* 更新暗色模式相關樣式 */
+        .dark-theme span[style*="color: #000080"] {
+            color: #7cb9ff !important;  /* 淡藍色 */
+        }
+
+        /* 確保一般文字為白色，但保留特殊顏色的文字 */
+        .dark-theme .table td {
+            color: #ffffff !important;
+        }
+
+        .dark-theme .table td span:not([style*="color:"]) {
+            color: #ffffff !important;
+        }
+
+        /* 保持特殊狀態的顏色 */
+        .dark-theme .table span[style*="color: #ea4242"] {
+            color: #ff6b6b !important;  /* 較亮的紅色 */
+        }
+
+        .dark-theme .table span[style*="color: #000080"] {
+            color: #7cb9ff !important;  /* 淡藍色 */
+        }
+
+        /* 確保黑色文字在暗色模式下變為白色 */
+        .dark-theme .table span[style*="color: #000000"],
+        .dark-theme .table span[style*="color: black"] {
+            color: #ffffff !important;
         }
     </style>
 </head>
@@ -491,6 +586,8 @@
 
     <script>
         const API_URL = "https://proxy.aliceric27.workers.dev/?url=https://www.dgpa.gov.tw/typh/daily/nds.html";
+
+        // const API_URL = "./test.html";
         
         // 定義縣市分類
         const regions = {
@@ -573,12 +670,14 @@
                     tableBody.innerHTML = regions[region].map(city => {
                         const displayCity = city;
                         const alert = alerts[city];
-                        const statusHtml = alert ? alert.statusHtml : '正常上班上課';
+                        const statusHtml = alert ? alert.statusHtml : '未發佈（正常上班上課）';
                         
                         const formattedStatus = statusHtml
-                            .replace(/<br>/g, '\n')  // 将 <br> 转换为换行符
-                            .replace(/<font color="#FF0000">/g, '<span style="color: #ea4242">')  // 转换红色字体
-                            .replace(/<\/font>/g, '</span>')  // 关闭标签
+                            .replace(/<br>/g, '\n')
+                            .replace(/<font color="#FF0000">/g, '<span style="color: #ea4242">')
+                            .replace(/<font color="#000000">/g, '<span style="color: #000000">')
+                            .replace(/<font color="#000080">/g, '<span style="color: #000080">')
+                            .replace(/<\/font>/g, '</span>')
                             .replace(/。\s*/g, '。\n')
                             .replace(/。$/g, '。');
 
@@ -604,7 +703,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             const themeToggle = document.getElementById('themeToggle');
             
-            // 檢查本地存儲的主題設置
+            // 檢查本地存儲的題設置
             const savedTheme = localStorage.getItem('theme');
             if (savedTheme) {
                 document.body.className = savedTheme;
